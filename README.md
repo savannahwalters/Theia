@@ -1,2 +1,2 @@
-# Capstone-Assistant
+# Theia
 IT Capstone Project
