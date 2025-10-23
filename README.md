@@ -107,14 +107,6 @@ npx expo run:android
 2) Point at an object or text and tap anywhere to capture.
 3) Theia sends the image to GPT‑4o Vision and returns a concise description or verbatim transcription. The result displays in an alert (TTS coming soon).
 
-
-## Configuration
-
-- Prompts and model settings live in `Theia/utils/vision.ts` (`VISION_PROMPTS`, `DEFAULT_VISION_CONFIG`).
-- The camera screen logic is in `Theia/app/(tabs)/index.tsx`.
-- A scaffold for a dedicated transcription screen exists at `Theia/app/(tabs)/transcribe.tsx`.
-
-
 ## Troubleshooting
 
 | Problem | Solution |
@@ -130,16 +122,6 @@ See also `Theia/QUICK_REFERENCE.md`.
 ## Cost
 
 Approx. $0.01 per image analysis with GPT‑4o (varies by image size and tokens). Monitor usage in your OpenAI dashboard.
-
-
-## Roadmap
-
-- Text‑to‑speech for spoken responses
-- History of results and sharing
-- Language selection and localization
-- Region‑aware OCR (bounding boxes / focus reticle)
-- On‑device pre‑filters (blur/brightness hints)
-
 
 ## Acknowledgements
 
