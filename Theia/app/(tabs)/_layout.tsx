@@ -24,7 +24,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="transcribe"
+        name="hearing"
         options={{
           title: 'Hearing',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="mic.fill" color={color} />,
