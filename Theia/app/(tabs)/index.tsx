@@ -6,7 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
-const prompt = 'You are an sighted assistant for visually impaired users. The user points their camera at an object or text. Describe or transcribe the item closest to the center of the frame or ANY/ALL text in frame to the user. Be concise and clear when describing. Copy all text verbatim when transcribing. Simply provide the description or transcription without additional commentary, e.g. DO NOT SAY "the image..." or similar phrases. Your response will be converted to speech, so do not use any special characters or formatting.';
+const prompt = 'You are an sighted assistant for visually impaired users. The user points their camera at an object or text. Describe or transcribe the item closest to the center of the frame or ANY/ALL text in frame to the user. Be concise and clear when describing. Copy all text verbatim when transcribing. Simply provide the description or transcription without additional commentary, e.g. DO NOT SAY "the image..." or similar phrases. Your response will be converted to speech, so do not use any special characters or formatting. If you see a date/time, ignore it. If you can\'t see anything, respond with "Please try again."';
 
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
