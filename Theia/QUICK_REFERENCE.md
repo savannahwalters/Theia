@@ -6,7 +6,7 @@
 3. Restart server: `npm start`
 
 ## Usage
-**Tap anywhere on screen** → Image captured & analyzed → Result shown in alert (temporary, TTS coming soon)
+**Tap anywhere on screen** → Image captured & analyzed → Result spoken aloud instantly (OpenAI gpt-4o-mini-tts)
 
 ## Troubleshooting
 | Problem | Solution |

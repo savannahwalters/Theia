@@ -30,7 +30,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.Cubed.Theia"
+      "package": "com.anonymous.Theia"
     },
     "web": {
       "output": "static",
