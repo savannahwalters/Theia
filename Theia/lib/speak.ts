@@ -1,5 +1,4 @@
 import { encode as btoa } from 'base-64';
-import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
@@ -37,6 +36,20 @@ export async function speakText(text: string, opts: SpeakOptions = {}): Promise<
   // Prepare audio session to play in iOS silent mode (native only)
   if (Platform.OS !== 'web') {
     console.log('[TTS] configure audio mode (native)');
+    // Lazy-load expo-av to avoid throwing at module import time when the
+    // native module isn't installed/linked yet (common during fast dev).
+    let Audio: any;
+    try {
+      // Dynamic import keeps the top-level module resolution from failing
+      // when native modules are missing at startup.
+      const mod = await import('expo-av');
+      Audio = mod.Audio;
+    } catch (err) {
+      throw new Error(
+        "Missing native module 'ExponentAV'. Install and rebuild the iOS app (run `npm install` then `npx pod-install` and rebuild / restart the dev client)."
+      );
+    }
+
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
@@ -111,31 +124,53 @@ export async function speakText(text: string, opts: SpeakOptions = {}): Promise<
     return;
   }
 
-  // Native: write to a temp file and play via Expo AV
-  console.log('[TTS] native write temp file and play');
+  // Native: try to write to a temp file and play via Expo AV. If no writable
+  // directory is available (some runtime environments), fall back to using a
+  // data URI so playback can proceed without filesystem access.
+  console.log('[TTS] native write temp file and play (or fall back to data URI)');
   const base64 = arrayBufferToBase64(arrayBuf);
   const fsAny = FileSystem as unknown as any;
-  const cacheDir: string | undefined = fsAny.cacheDirectory ?? fsAny.documentDirectory;
-  if (!cacheDir) {
-    throw new Error('No writable file system directory available');
+  const cacheDir: string | undefined = fsAny?.cacheDirectory ?? fsAny?.documentDirectory;
+
+  let fileUri: string;
+  let wroteToFs = false;
+  if (cacheDir) {
+    fileUri = `${cacheDir}speak-${Date.now()}.${format}`;
+    console.log('[TTS] writing file:', fileUri);
+    await fsAny.writeAsStringAsync(fileUri, base64, { encoding: fsAny.EncodingType?.Base64 ?? 'base64' });
+    wroteToFs = true;
+  } else {
+    // Fallback: use a data URI. Expo AV supports data URIs for audio sources,
+    // which avoids needing filesystem permissions or a writable directory.
+    console.warn('[TTS] No writable file system directory available — falling back to data URI playback');
+    fileUri = `data:${acceptMime};base64,${base64}`;
   }
-  const fileUri = `${cacheDir}speak-${Date.now()}.${format}`;
 
-  console.log('[TTS] writing file:', fileUri);
-  await fsAny.writeAsStringAsync(fileUri, base64, { encoding: fsAny.EncodingType?.Base64 ?? 'base64' });
+  // Lazy-load Audio here as well so the import isn't required on module load.
+  let AudioMod: any;
+  try {
+    const mod = await import('expo-av');
+    AudioMod = mod;
+  } catch (err) {
+    throw new Error(
+      "Missing native module 'ExponentAV' required for audio playback. Install and rebuild the iOS app (run `npm install` then `npx pod-install` and rebuild / restart the dev client)."
+    );
+  }
 
-  const sound = new Audio.Sound();
+  const sound = new AudioMod.Audio.Sound();
   try {
     console.log('[TTS] load and play with Expo AV');
     await sound.loadAsync({ uri: fileUri }, { shouldPlay: true });
   } finally {
     // Unload after playback ends
-    sound.setOnPlaybackStatusUpdate((status) => {
+    sound.setOnPlaybackStatusUpdate((status: any) => {
       if (!status.isLoaded) return;
       if ('didJustFinish' in status && status.didJustFinish) {
         sound.unloadAsync();
-        // Best-effort cleanup of the temp file
-        fsAny.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
+        // Best-effort cleanup of the temp file (only when we actually wrote one)
+            if (wroteToFs) {
+              fsAny.deleteAsync(fileUri, { idempotent: true }).catch(() => {});
+            }
       }
     });
   }

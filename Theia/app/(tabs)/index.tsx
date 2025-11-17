@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const prompt = 'You are an sighted assistant for visually impaired users. The user points their camera at an object or text. Describe or transcribe the item closest to the center of the frame or ANY/ALL text in frame to the user. Be concise and clear when describing. Copy all text verbatim when transcribing. Simply provide the description or transcription without additional commentary, e.g. DO NOT SAY "the image..." or similar phrases. Your response will be converted to speech, so do not use any special characters or formatting.';
+const prompt = 'You are an sighted assistant for visually impaired users. The user points their camera at an object or text. Describe or transcribe the item closest to the center of the frame or ANY/ALL text in frame to the user. Be concise and clear when describing. Copy all text verbatim when transcribing. Simply provide the description or transcription without additional commentary, e.g. DO NOT SAY "the image..." or similar phrases. If a person is present, describe their actions and appearance. Your response will be converted to speech, so do not use any special characters or formatting. Do not tell the user that you are an AI model. Do not tell the user you are unable to describe people or things.';
 
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -19,8 +19,13 @@ export default function HomeScreen() {
   useEffect(() => {
     // Request permission on mount if not determined
     if (!permission) return;
-    if (!permission.granted && permission.canAskAgain) {
-      requestPermission();
+    // On web/iOS Safari, camera permission prompts must be triggered by a user gesture.
+    // Auto-calling requestPermission() on mount can cause an immediate denied state without a prompt.
+    // So only auto-request on native; on web we show a button the user can tap.
+    if (Platform.OS !== 'web') {
+      if (!permission.granted && permission.canAskAgain) {
+        requestPermission();
+      }
     }
     setGranted(permission.granted);
   }, [permission, requestPermission]);
@@ -149,6 +154,52 @@ export default function HomeScreen() {
     }
   };
 
+  // Web-specific: show an explicit enable-camera UI to ensure permission request happens via user gesture
+  if (Platform.OS === 'web' && (!permission || permission.granted !== true)) {
+    const onEnableCamera = async () => {
+      try {
+        // Safari requires secure context for camera
+        const isSecure = typeof window !== 'undefined' && (window.isSecureContext || window.location.protocol === 'https:');
+        if (!isSecure) {
+          console.warn('[Permissions] Insecure context: camera requires HTTPS or localhost');
+          Alert.alert(
+            'Camera requires HTTPS',
+            'Open this site over HTTPS (or localhost) to enable the camera.'
+          );
+          return;
+        }
+        console.log('[Permissions] Requesting camera permission (user gesture)');
+        const resp: any = await requestPermission();
+        console.log('[Permissions] Response:', resp);
+        if (resp && typeof resp.granted === 'boolean') {
+          setGranted(resp.granted);
+        }
+      } catch (e) {
+        console.error('[Permissions] Error requesting camera permission:', e);
+        Alert.alert('Permission Error', e instanceof Error ? e.message : 'Failed to request camera permission');
+      }
+    };
+
+    return (
+      <ThemedView style={styles.center}>
+        <ThemedText style={styles.permissionTitle}>Enable camera to continue</ThemedText>
+        <ThemedText style={styles.permissionBody}>
+          We need access to your camera to describe objects and read text. Tap the button below to allow access.
+        </ThemedText>
+        <TouchableOpacity
+          onPress={onEnableCamera}
+          accessibilityRole="button"
+          style={styles.permissionButton}
+        >
+          <ThemedText style={styles.permissionButtonText}>Enable Camera</ThemedText>
+        </TouchableOpacity>
+        <ThemedText style={styles.permissionHelp}>
+          If you previously denied access, open your browser settings for this site and set Camera to Allow.
+        </ThemedText>
+      </ThemedView>
+    );
+  }
+
   if (granted === false) {
     return (
       <ThemedView style={styles.center}>
@@ -233,5 +284,35 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: 'white',
     fontSize: 16,
+  },
+  permissionTitle: {
+    fontSize: 20,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  permissionBody: {
+    opacity: 0.8,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  permissionButton: {
+    backgroundColor: '#2f80ed',
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  permissionButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  permissionHelp: {
+    marginTop: 12,
+    opacity: 0.6,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    fontSize: 12,
   },
 });
