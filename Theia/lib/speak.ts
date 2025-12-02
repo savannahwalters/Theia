@@ -1,6 +1,7 @@
 import { encode as btoa } from 'base-64';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import { getApiKey } from './settings';
 
 // Converts an ArrayBuffer to a Base64 string without external heavy deps
 const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
@@ -20,13 +21,13 @@ export type SpeakOptions = {
 };
 
 /**
- * Fetches TTS audio from OpenAI gpt-4o-mini-tts and plays it immediately via Expo AV.
+ * Fetches TTS audio from    gpt-4o-mini-tts and plays it immediately via Expo AV.
  * - Requires EXPO_PUBLIC_OPENAI_API_KEY to be set.
  */
 export async function speakText(text: string, opts: SpeakOptions = {}): Promise<void> {
-  const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+  const apiKey = await getApiKey();
   if (!apiKey) {
-    throw new Error('Missing EXPO_PUBLIC_OPENAI_API_KEY');
+    throw new Error('OpenAI API key is not set. Add it in Settings.');
   }
 
   const voice = opts.voice ?? 'alloy';

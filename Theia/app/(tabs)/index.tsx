@@ -1,12 +1,13 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { getApiKey, getVisionPrompt } from '@/lib/settings';
 import { speakText } from '@/lib/speak';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const prompt = 'You are an sighted assistant for visually impaired users. The user points their camera at an object or text. Describe or transcribe the item closest to the center of the frame or ANY/ALL text in frame to the user. Be concise and clear when describing. Copy all text verbatim when transcribing. Simply provide the description or transcription without additional commentary, e.g. DO NOT SAY "the image..." or similar phrases. If a person is present, describe their actions and appearance. Your response will be converted to speech, so do not use any special characters or formatting. Do not tell the user that you are an AI model. Do not tell the user you are unable to describe people or things.';
+let promptCache: string | null = null;
 
 export default function HomeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -81,11 +82,18 @@ export default function HomeScreen() {
   };
 
   const analyzeImage = async (base64Image: string, contentType: 'image/jpeg' | 'image/png' = 'image/jpeg') => {
-    const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-    
-    if (!apiKey || apiKey === 'your_openai_api_key_here') {
-      console.log('[Vision] Missing API key');
-      Alert.alert('Error', 'Please set your OpenAI API key in the .env file');
+    const [apiKey, visionPrompt] = await Promise.all([
+      getApiKey(),
+      (async () => {
+        if (promptCache) return promptCache;
+        const p = await getVisionPrompt();
+        promptCache = p;
+        return p;
+      })(),
+    ]);
+
+    if (!apiKey) {
+      Alert.alert('Error', 'OpenAI API key is not set. Add it in Settings.');
       return;
     }
 
@@ -112,7 +120,7 @@ export default function HomeScreen() {
               content: [
                 {
                   type: 'text',
-                  text: prompt,
+                  text: visionPrompt,
                 },
                 {
                   type: 'image_url',
